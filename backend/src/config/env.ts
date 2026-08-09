@@ -8,9 +8,13 @@ function required(name: string, fallback?: string): string {
   return value;
 }
 
+// Comma-separated list, e.g. "http://localhost:5173,http://localhost:8765" — the
+// second default covers `flutter run -d chrome`, whose dev-server port varies.
+const defaultCorsOrigins = ["http://localhost:5173", "http://localhost:8765"];
+
 export const env = {
   port: Number(process.env.PORT ?? 4000),
-  corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+  corsOrigin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim()) : defaultCorsOrigins,
   databaseUrl: required("DATABASE_URL"),
   jwtSecret: required("JWT_SECRET"),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "8h",
@@ -30,6 +34,26 @@ export const env = {
     accountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
     authToken: process.env.TWILIO_AUTH_TOKEN ?? "",
     fromNumber: process.env.TWILIO_FROM_NUMBER ?? "",
+  },
+  payments: {
+    mtnMomo: {
+      apiKey: process.env.MTN_MOMO_API_KEY ?? "",
+      apiUser: process.env.MTN_MOMO_API_USER ?? "",
+      subscriptionKey: process.env.MTN_MOMO_SUBSCRIPTION_KEY ?? "",
+      env: process.env.MTN_MOMO_ENV ?? "sandbox",
+    },
+    orangeMoney: {
+      apiKey: process.env.ORANGE_MONEY_API_KEY ?? "",
+      merchantKey: process.env.ORANGE_MONEY_MERCHANT_KEY ?? "",
+    },
+    stripe: {
+      secretKey: process.env.STRIPE_SECRET_KEY ?? "",
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? "",
+    },
+    flutterwave: {
+      secretKey: process.env.FLUTTERWAVE_SECRET_KEY ?? "",
+      publicKey: process.env.FLUTTERWAVE_PUBLIC_KEY ?? "",
+    },
   },
 };
 

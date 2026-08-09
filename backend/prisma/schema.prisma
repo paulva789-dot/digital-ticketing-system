@@ -3,8 +3,12 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Pooled connection (pgbouncer, port 6543) — used at runtime by the app.
+  url       = env("DATABASE_URL")
+  // Direct connection (port 5432) — used only for migrations, since the
+  // pooler doesn't support the prepared statements `prisma migrate` needs.
+  directUrl = env("DIRECT_URL")
 }
 
 enum TicketStatus {
@@ -27,13 +31,47 @@ enum StaffRole {
   ADMIN
 }
 
+enum SeatType {
+  STANDARD
+  FRONT_ROW
+}
+
+enum PaymentPlan {
+  FULL
+  INSTALLMENT
+}
+
+enum SecurityApplicationStatus {
+  RECEIVED
+  REVIEWING
+  ACCEPTED
+  REJECTED
+}
+
+enum PaymentProvider {
+  MTN_MOMO
+  ORANGE_MONEY
+  STRIPE
+  FLUTTERWAVE
+  FREE_TRIAL
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
 model User {
-  id          String   @id @default(uuid())
-  firebaseUid String   @unique
-  email       String?
-  name        String?
-  phone       String?
-  createdAt   DateTime @default(now())
+  id            String   @id @default(uuid())
+  firebaseUid   String   @unique
+  email         String?
+  name          String?
+  phone         String?
+  isPremium     Boolean  @default(false)
+  freeTrialUsed Boolean  @default(false)
+  locale        String   @default("en")
+  createdAt     DateTime @default(now())
 
   tickets Ticket[]
 }
@@ -55,23 +93,81 @@ model Service {
   active            Boolean  @default(true)
   createdAt         DateTime @default(now())
 
+  /// Next ticket number to hand out for this service. Incremented atomically
+  /// (a single row UPDATE) so concurrent bookings never collide on a number.
+  nextTicketNumber Int @default(1)
+
+  /// Base price per standard ticket, in the smallest display currency unit (e.g. dollars).
+  price             Float    @default(0)
+  /// Extra charged per front-row ticket on top of `price`.
+  frontRowSurcharge Float    @default(0)
+  /// Total front-row seats available for this event/service.
+  frontRowStock     Int      @default(0)
+  /// Front-row seats already sold.
+  frontRowSold      Int      @default(0)
+  /// When front-row booking opens for everyone.
+  frontRowReleaseAt DateTime @default(now())
+  /// Free (non-premium) users may only book front-row seats within this many
+  /// days of frontRowReleaseAt, and are capped at one front-row ticket.
+  /// Premium users can book any time, with no per-order cap, while stock lasts.
+  frontRowWindowDays Int     @default(3)
+
   tickets Ticket[]
 }
 
 model Ticket {
-  id          String        @id @default(uuid())
-  number      Int
-  serviceId   String
-  service     Service       @relation(fields: [serviceId], references: [id])
-  userId      String?
-  user        User?         @relation(fields: [userId], references: [id])
-  status      TicketStatus  @default(WAITING)
-  channel     TicketChannel @default(WEB)
-  createdAt   DateTime      @default(now())
-  calledAt    DateTime?
-  servingAt   DateTime?
-  completedAt DateTime?
+  id            String        @id @default(uuid())
+  number        Int
+  serviceId     String
+  service       Service       @relation(fields: [serviceId], references: [id])
+  userId        String?
+  user          User?         @relation(fields: [userId], references: [id])
+  status        TicketStatus  @default(WAITING)
+  channel       TicketChannel @default(WEB)
+  seatType      SeatType      @default(STANDARD)
+  quantity      Int           @default(1)
+  unitPrice     Float         @default(0)
+  discountPct   Float         @default(0)
+  totalPrice    Float         @default(0)
+  paymentPlan   PaymentPlan   @default(FULL)
+  installments  Int           @default(1)
+  amountPaid    Float         @default(0)
+  /// Optional appointment slot the customer picked, instead of joining the walk-in line immediately.
+  scheduledAt   DateTime?
+  rescheduleCount Int         @default(0)
+  reminderSentAt  DateTime?
+  createdAt     DateTime      @default(now())
+  calledAt      DateTime?
+  servingAt     DateTime?
+  completedAt   DateTime?
+
+  payments Payment[]
 
   @@index([serviceId, status])
   @@index([serviceId, createdAt])
+}
+
+model Payment {
+  id        String          @id @default(uuid())
+  ticketId  String
+  ticket    Ticket          @relation(fields: [ticketId], references: [id])
+  provider  PaymentProvider
+  status    PaymentStatus   @default(PENDING)
+  amount    Float
+  reference String          @unique
+  createdAt DateTime        @default(now())
+  confirmedAt DateTime?
+
+  @@index([ticketId])
+}
+
+model SecurityApplication {
+  id         String                     @id @default(uuid())
+  fullName   String
+  email      String
+  phone      String
+  experience String?
+  message    String?
+  status     SecurityApplicationStatus  @default(RECEIVED)
+  createdAt  DateTime                   @default(now())
 }

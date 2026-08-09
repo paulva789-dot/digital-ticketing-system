@@ -1,0 +1,90 @@
+{
+  "nav": {
+    "brand": "Billetterie Numérique",
+    "book": "Réserver un billet",
+    "applySecurity": "Postuler à la sécurité",
+    "myTickets": "Mes billets",
+    "staffLogin": "Connexion personnel",
+    "signIn": "Se connecter",
+    "signOut": "Se déconnecter",
+    "goPremium": "Passer Premium",
+    "premium": "Premium"
+  },
+  "home": {
+    "title": "Choisissez un service",
+    "subtitle": "Réservez un billet et évitez la file d'attente.",
+    "from": "à partir de",
+    "empty": "Aucun service disponible pour le moment."
+  },
+  "book": {
+    "title": "Réservez votre billet",
+    "standard": "Standard",
+    "frontRow": "Premier rang",
+    "perTicket": "/ billet",
+    "left": "restants",
+    "quantity": "Nombre de billets",
+    "discountApplied": "réduction multi-billets appliquée pour {{quantity}} billets",
+    "appointment": "Date et heure du rendez-vous (optionnel)",
+    "appointmentHint": "Choisissez un créneau au lieu de rejoindre la file immédiatement.",
+    "email": "Email (optionnel — recevez aussi votre billet par email)",
+    "phone": "Téléphone (optionnel, pour les alertes SMS)",
+    "installments": "Payer en plusieurs fois",
+    "installmentsCount": "Nombre de versements",
+    "total": "Total",
+    "submit": "Continuer vers le paiement",
+    "submitting": "Réservation..."
+  },
+  "payment": {
+    "title": "Choisissez comment payer",
+    "freeTrial": "Essai gratuit (premier billet offert)",
+    "freeTrialUsed": "Vous avez déjà utilisé votre essai gratuit",
+    "signInForTrial": "Connectez-vous pour profiter de l'essai gratuit",
+    "pay": "Payer",
+    "sandboxNotice": "Mode bac à sable — aucun paiement réel ne sera effectué.",
+    "confirmSandbox": "Simuler un paiement réussi",
+    "success": "Paiement réussi !",
+    "pending": "Paiement en attente"
+  },
+  "ticket": {
+    "yourTurn": "C'est votre tour !",
+    "inQueue": "Vous êtes dans la file",
+    "status": "Statut",
+    "seatType": "Type de place",
+    "quantity": "Quantité",
+    "discount": "Réduction",
+    "total": "Total",
+    "balanceDue": "Solde dû",
+    "reschedule": "Reprogrammer le rendez-vous",
+    "rescheduleSave": "Enregistrer la nouvelle heure",
+    "document": "Voir / télécharger le billet",
+    "cancel": "Annuler le billet",
+    "cancelConfirm": "Voulez-vous vraiment annuler ce billet ?",
+    "cancelled": "Ce billet a été annulé.",
+    "yourNumber": "Votre numéro",
+    "nowServing": "Numéro en cours",
+    "peopleAhead": "Personnes devant vous",
+    "estWait": "Attente estimée"
+  },
+  "security": {
+    "title": "Postuler comme agent de sécurité",
+    "subtitle": "Rejoignez notre équipe de sécurité pour les prochains événements. Parlez-nous de vous et nous vous recontacterons.",
+    "fullName": "Nom complet",
+    "email": "Email",
+    "phone": "Téléphone",
+    "experience": "Expérience pertinente (optionnel)",
+    "message": "Autre chose ? (optionnel)",
+    "submit": "Envoyer la candidature",
+    "submitting": "Envoi...",
+    "confirmationSub": "Votre candidature a été enregistrée, nous vous recontacterons par email."
+  },
+  "auth": {
+    "signInTitle": "Se connecter",
+    "signUpTitle": "Créer votre compte",
+    "email": "Email",
+    "password": "Mot de passe",
+    "signIn": "Se connecter",
+    "signUp": "S'inscrire",
+    "noAccount": "Pas encore de compte ?",
+    "haveAccount": "Déjà un compte ?"
+  }
+}

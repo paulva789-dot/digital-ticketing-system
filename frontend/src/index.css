@@ -1,3 +1,77 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root[data-theme="light"] {
+  --bg: #f1f5f9;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #64748b;
+  --accent: #4f46e5;
+  --accent-text: #ffffff;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b1120;
+  --surface: #111827;
+  --border: #1f2937;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --accent: #818cf8;
+  --accent-text: #0b1120;
+}
+
+:root[data-theme="event"] {
+  --bg: #1a0b2e;
+  --surface: #241242;
+  --border: #4c1d95;
+  --text: #fdf4ff;
+  --muted: #c4b5fd;
+  --accent: #f472b6;
+  --accent-text: #1a0b2e;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.themed-surface {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.themed-accent {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.themed-muted {
+  color: var(--muted);
+}
+
+.themed-border {
+  border-color: var(--border);
+}
+
+@keyframes soft-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.35); }
+  50% { box-shadow: 0 0 0 8px rgba(79, 70, 229, 0); }
+}
+
+.pulse-accent {
+  animation: soft-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--border) 25%, var(--surface) 37%, var(--border) 63%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease infinite;
+}

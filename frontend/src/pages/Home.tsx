@@ -1,10 +1,22 @@
+import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { Service } from "../types";
 
+const container = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06 } },
+};
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
+
 export function Home() {
-  const [services, setServices] = useState<Service[]>([]);
+  const { t } = useTranslation();
+  const [services, setServices] = useState<Service[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -17,24 +29,42 @@ export function Home() {
 
   return (
     <div className="max-w-2xl mx-auto py-12 px-6">
-      <h1 className="text-2xl font-bold text-slate-900 mb-2">Choose a service</h1>
-      <p className="text-slate-500 mb-8">Book a ticket and skip the physical line.</p>
+      <h1 className="text-2xl font-bold mb-2">{t("home.title")}</h1>
+      <p className="themed-muted mb-8">{t("home.subtitle")}</p>
 
-      {error && <p className="text-red-600 mb-4">{error}</p>}
+      {error && <p className="text-red-500 mb-4">{error}</p>}
 
-      <div className="grid gap-3">
-        {services.map((service) => (
-          <button
+      {!services && !error && (
+        <div className="grid gap-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="skeleton rounded-lg h-16 border themed-border" />
+          ))}
+        </div>
+      )}
+
+      <motion.div variants={container} initial="hidden" animate="show" className="grid gap-3">
+        {(services ?? []).map((service) => (
+          <motion.button
             key={service.id}
+            variants={item}
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => navigate(`/book/${service.id}`)}
-            className="text-left bg-white border border-slate-200 rounded-lg p-4 hover:border-slate-400 transition"
+            className="text-left themed-surface border themed-border rounded-lg p-4 shadow-sm"
           >
-            <div className="font-medium text-slate-900">{service.name}</div>
-            {service.description && <div className="text-sm text-slate-500">{service.description}</div>}
-          </button>
+            <div className="flex justify-between items-baseline">
+              <div className="font-medium">{service.name}</div>
+              {service.price > 0 && (
+                <div className="text-sm themed-muted">
+                  {t("home.from")} ${service.price.toFixed(2)}
+                </div>
+              )}
+            </div>
+            {service.description && <div className="text-sm themed-muted">{service.description}</div>}
+          </motion.button>
         ))}
-        {services.length === 0 && !error && <p className="text-slate-400">No services available yet.</p>}
-      </div>
+        {services?.length === 0 && !error && <p className="themed-muted">{t("home.empty")}</p>}
+      </motion.div>
     </div>
   );
 }

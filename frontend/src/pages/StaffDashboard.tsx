@@ -58,14 +58,14 @@ export function StaffDashboard() {
 
   return (
     <div className="max-w-xl mx-auto py-12 px-6 grid gap-6">
-      <h1 className="text-2xl font-bold text-slate-900">Staff dashboard — {session.staff.name}</h1>
+      <h1 className="text-2xl font-bold">Staff dashboard — {session.staff.name}</h1>
 
       <label className="grid gap-1">
-        <span className="text-sm text-slate-600">Service</span>
+        <span className="text-sm themed-muted">Service</span>
         <select
           value={selectedService}
           onChange={(e) => setSelectedService(e.target.value)}
-          className="border border-slate-300 rounded-md px-3 py-2"
+          className="themed-surface border themed-border rounded-md px-3 py-2"
         >
           {services.map((s) => (
             <option key={s.id} value={s.id}>
@@ -76,7 +76,7 @@ export function StaffDashboard() {
       </label>
 
       {queueStatus && (
-        <div className="bg-slate-50 rounded-lg p-4 flex justify-between text-sm">
+        <div className="themed-surface border themed-border rounded-lg p-4 flex justify-between text-sm">
           <span>Waiting: {queueStatus.waitingCount}</span>
           <span>Now serving: {queueStatus.nowServing ?? "—"}</span>
           <span>Est. wait: {queueStatus.estimatedWaitMin}m</span>
@@ -84,20 +84,20 @@ export function StaffDashboard() {
       )}
 
       {calledTicket && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
-          <span className="font-medium text-amber-900">Now calling ticket #{calledTicket.number}</span>
-          <button onClick={completeCurrent} className="bg-amber-900 text-white text-sm rounded-md px-3 py-1.5">
+        <div className="border border-amber-500/40 rounded-lg p-4 flex items-center justify-between">
+          <span className="font-medium">Now calling ticket #{calledTicket.number}</span>
+          <button onClick={completeCurrent} className="themed-accent text-sm rounded-md px-3 py-1.5">
             Mark complete
           </button>
         </div>
       )}
 
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && <p className="text-red-500 text-sm">{error}</p>}
 
       <button
         onClick={callNext}
         disabled={!selectedService}
-        className="bg-slate-900 text-white rounded-md py-2 font-medium disabled:opacity-50"
+        className="themed-accent rounded-md py-2 font-medium disabled:opacity-50"
       >
         Call next ticket
       </button>

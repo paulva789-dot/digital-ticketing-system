@@ -1,4 +1,4 @@
-import { TicketChannel, TicketStatus } from "@prisma/client";
+import { PaymentPlan, SeatType, TicketChannel, TicketStatus } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { HttpError } from "../middleware/errorHandler";
 import { emitQueueUpdate, emitTicketCalled } from "../sockets";
@@ -12,12 +12,64 @@ interface CreateTicketInput {
   channel: TicketChannel;
   contactEmail?: string;
   contactPhone?: string;
+  quantity: number;
+  seatType: SeatType;
+  paymentPlan: PaymentPlan;
+  installments: number;
+  scheduledAt?: Date;
+}
+
+/** 10% off orders of 2+ tickets, 20% off orders of 5+ — encourages group bookings. */
+export function discountPctForQuantity(quantity: number): number {
+  if (quantity >= 5) return 20;
+  if (quantity >= 2) return 10;
+  return 0;
+}
+
+/**
+ * Checks the rules that don't need a database lock (release window, per-order cap).
+ * Stock itself is enforced separately by an atomic conditional UPDATE inside the
+ * booking transaction — checking `frontRowSold` here first is just a fast-fail;
+ * it is NOT what prevents overselling under concurrent requests.
+ */
+function assertFrontRowRules(
+  service: { frontRowStock: number; frontRowSold: number; frontRowReleaseAt: Date; frontRowWindowDays: number },
+  quantity: number,
+  isPremium: boolean
+) {
+  const remaining = service.frontRowStock - service.frontRowSold;
+  if (remaining < quantity) {
+    throw new HttpError(409, "Not enough front-row tickets left");
+  }
+
+  if (isPremium) return; // Premium: book any time, no per-order cap, while stock lasts.
+
+  const windowCloses = new Date(
+    service.frontRowReleaseAt.getTime() + service.frontRowWindowDays * 24 * 60 * 60 * 1000
+  );
+  const now = new Date();
+  if (now < service.frontRowReleaseAt || now > windowCloses) {
+    throw new HttpError(
+      403,
+      `Front-row tickets for free accounts are only bookable within ${service.frontRowWindowDays} days of release. Upgrade to premium for anytime access.`
+    );
+  }
+  if (quantity > 1) {
+    throw new HttpError(403, "Free accounts are limited to 1 front-row ticket per order. Upgrade to premium for more.");
+  }
 }
 
 export async function createTicket(input: CreateTicketInput) {
   const service = await prisma.service.findUnique({ where: { id: input.serviceId } });
   if (!service || !service.active) {
     throw new HttpError(404, "Service not found or inactive");
+  }
+
+  const user = input.userId ? await prisma.user.findUnique({ where: { id: input.userId } }) : null;
+  const isPremium = user?.isPremium ?? false;
+
+  if (input.seatType === "FRONT_ROW") {
+    assertFrontRowRules(service, input.quantity, isPremium);
   }
 
   if (input.userId && (input.contactEmail || input.contactPhone)) {
@@ -30,17 +82,46 @@ export async function createTicket(input: CreateTicketInput) {
     });
   }
 
+  const unitPrice = service.price + (input.seatType === "FRONT_ROW" ? service.frontRowSurcharge : 0);
+  const discountPct = discountPctForQuantity(input.quantity);
+  const totalPrice = Math.round(unitPrice * input.quantity * (1 - discountPct / 100) * 100) / 100;
+
   const ticket = await prisma.$transaction(async (tx) => {
-    const last = await tx.ticket.findFirst({
-      where: { serviceId: input.serviceId },
-      orderBy: { number: "desc" },
-    });
+    if (input.seatType === "FRONT_ROW") {
+      // Single atomic UPDATE: only succeeds if there's still enough stock, so two
+      // concurrent bookings can never both succeed and oversell the last seats.
+      const claimed = await tx.$executeRaw`
+        UPDATE "Service"
+        SET "frontRowSold" = "frontRowSold" + ${input.quantity}
+        WHERE id = ${input.serviceId} AND "frontRowSold" + ${input.quantity} <= "frontRowStock"
+      `;
+      if (claimed === 0) throw new HttpError(409, "Not enough front-row tickets left");
+    }
+
+    // Same pattern for ticket numbers: an atomic increment-and-return instead of a
+    // separate "find max, then insert max+1" that two concurrent requests could race.
+    const [{ nextTicketNumber }] = await tx.$queryRaw<{ nextTicketNumber: number }[]>`
+      UPDATE "Service"
+      SET "nextTicketNumber" = "nextTicketNumber" + 1
+      WHERE id = ${input.serviceId}
+      RETURNING "nextTicketNumber"
+    `;
+
     return tx.ticket.create({
       data: {
         serviceId: input.serviceId,
         userId: input.userId,
         channel: input.channel,
-        number: (last?.number ?? 0) + 1,
+        number: nextTicketNumber - 1,
+        seatType: input.seatType,
+        quantity: input.quantity,
+        unitPrice,
+        discountPct,
+        totalPrice,
+        paymentPlan: input.paymentPlan,
+        installments: input.paymentPlan === "INSTALLMENT" ? input.installments : 1,
+        amountPaid: 0,
+        scheduledAt: input.scheduledAt,
       },
     });
   });
@@ -48,10 +129,16 @@ export async function createTicket(input: CreateTicketInput) {
   const qrCode = await generateTicketQrCode(ticket.id);
 
   await notifyTicketCreated({
-    email: input.contactEmail,
-    phone: input.contactPhone,
+    email: input.contactEmail ?? user?.email,
+    phone: input.contactPhone ?? user?.phone,
     serviceName: service.name,
     ticketNumber: ticket.number,
+    quantity: ticket.quantity,
+    seatType: ticket.seatType,
+    totalPrice: ticket.totalPrice,
+    discountPct: ticket.discountPct,
+    paymentPlan: ticket.paymentPlan,
+    amountPaid: ticket.amountPaid,
   });
 
   emitQueueUpdate(service.id, await getQueueStatus(service.id));
@@ -66,6 +153,107 @@ export async function getTicket(ticketId: string) {
   });
   if (!ticket) throw new HttpError(404, "Ticket not found");
   return ticket;
+}
+
+const CANCELLABLE_STATUSES: TicketStatus[] = ["WAITING", "CALLED"];
+
+/** Customer-initiated cancellation. Releases any front-row seats it held back to stock. */
+export async function cancelTicket(ticketId: string) {
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+  if (!ticket) throw new HttpError(404, "Ticket not found");
+  if (!CANCELLABLE_STATUSES.includes(ticket.status)) {
+    throw new HttpError(400, `Cannot cancel a ticket that is already ${ticket.status.toLowerCase()}`);
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    if (ticket.seatType === "FRONT_ROW") {
+      await tx.service.update({
+        where: { id: ticket.serviceId },
+        data: { frontRowSold: { decrement: ticket.quantity } },
+      });
+    }
+    return tx.ticket.update({ where: { id: ticketId }, data: { status: "CANCELLED" } });
+  });
+
+  emitQueueUpdate(updated.serviceId, await getQueueStatus(updated.serviceId));
+  return updated;
+}
+
+const RESCHEDULABLE_STATUSES: TicketStatus[] = ["WAITING"];
+
+/** Moves an appointment's scheduled time. Only allowed while the ticket is still WAITING. */
+export async function rescheduleTicket(ticketId: string, scheduledAt: Date) {
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId }, include: { service: true, user: true } });
+  if (!ticket) throw new HttpError(404, "Ticket not found");
+  if (!RESCHEDULABLE_STATUSES.includes(ticket.status)) {
+    throw new HttpError(400, `Cannot reschedule a ticket that is already ${ticket.status.toLowerCase()}`);
+  }
+  if (scheduledAt.getTime() < Date.now()) {
+    throw new HttpError(400, "New appointment time must be in the future");
+  }
+
+  const updated = await prisma.ticket.update({
+    where: { id: ticketId },
+    data: { scheduledAt, rescheduleCount: { increment: 1 }, reminderSentAt: null },
+  });
+
+  const message = `Your appointment for ${ticket.service.name} (ticket #${ticket.number}) has been rescheduled to ${scheduledAt.toLocaleString()}.`;
+  const { sendEmail } = await import("./email.service");
+  const { sendSms } = await import("./sms.service");
+  await Promise.allSettled([
+    ticket.user?.email ? sendEmail(ticket.user.email, "Appointment rescheduled", message) : Promise.resolve(),
+    ticket.user?.phone ? sendSms(ticket.user.phone, message) : Promise.resolve(),
+  ]);
+
+  return updated;
+}
+
+/**
+ * Scans for appointments starting within the next 24h that haven't had a reminder sent yet,
+ * and notifies their owners. Intended to be run on an interval (see index.ts).
+ */
+export async function sendUpcomingReminders() {
+  const windowEnd = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const due = await prisma.ticket.findMany({
+    where: {
+      scheduledAt: { gte: new Date(), lte: windowEnd },
+      reminderSentAt: null,
+      status: "WAITING",
+    },
+    include: { service: true, user: true },
+  });
+
+  for (const ticket of due) {
+    const message = `Reminder: your appointment for ${ticket.service.name} (ticket #${ticket.number}) is coming up on ${ticket.scheduledAt!.toLocaleString()}.`;
+    await notifyTicketAlmostUp({
+      email: ticket.user?.email,
+      phone: ticket.user?.phone,
+      serviceName: ticket.service.name,
+      ticketNumber: ticket.number,
+    }).catch(() => {});
+    const { sendEmail } = await import("./email.service");
+    await (ticket.user?.email ? sendEmail(ticket.user.email, "Appointment reminder", message) : Promise.resolve());
+    await prisma.ticket.update({ where: { id: ticket.id }, data: { reminderSentAt: new Date() } });
+  }
+
+  return due.length;
+}
+
+/** Records an installment payment against a ticket booked on the INSTALLMENT plan. */
+export async function payInstallment(ticketId: string, amount: number) {
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+  if (!ticket) throw new HttpError(404, "Ticket not found");
+  if (ticket.paymentPlan !== "INSTALLMENT") {
+    throw new HttpError(400, "This ticket is not on an installment plan");
+  }
+  const balance = ticket.totalPrice - ticket.amountPaid;
+  if (balance <= 0) throw new HttpError(400, "This ticket is already fully paid");
+  if (amount > balance + 0.01) throw new HttpError(400, `Amount exceeds remaining balance of ${balance.toFixed(2)}`);
+
+  return prisma.ticket.update({
+    where: { id: ticketId },
+    data: { amountPaid: { increment: amount } },
+  });
 }
 
 /** Staff action: pulls the next WAITING ticket for a service into CALLED state. */

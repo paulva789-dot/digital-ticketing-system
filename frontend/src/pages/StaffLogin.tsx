@@ -27,7 +27,7 @@ export function StaffLogin() {
 
   return (
     <div className="max-w-sm mx-auto py-12 px-6">
-      <h1 className="text-2xl font-bold text-slate-900 mb-6">Staff login</h1>
+      <h1 className="text-2xl font-bold mb-6">Staff login</h1>
       <form onSubmit={handleSubmit} className="grid gap-4">
         <input
           type="email"
@@ -35,7 +35,7 @@ export function StaffLogin() {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="border border-slate-300 rounded-md px-3 py-2"
+          className="themed-surface border themed-border rounded-md px-3 py-2"
         />
         <input
           type="password"
@@ -43,13 +43,13 @@ export function StaffLogin() {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="border border-slate-300 rounded-md px-3 py-2"
+          className="themed-surface border themed-border rounded-md px-3 py-2"
         />
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-red-500 text-sm">{error}</p>}
         <button
           type="submit"
           disabled={submitting}
-          className="bg-slate-900 text-white rounded-md py-2 font-medium disabled:opacity-50"
+          className="themed-accent rounded-md py-2 font-medium disabled:opacity-50"
         >
           {submitting ? "Signing in..." : "Sign in"}
         </button>

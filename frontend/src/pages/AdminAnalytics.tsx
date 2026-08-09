@@ -47,18 +47,20 @@ export function AdminAnalytics() {
 
   return (
     <div className="max-w-2xl mx-auto py-12 px-6">
-      <h1 className="text-2xl font-bold text-slate-900 mb-6">Queue analytics</h1>
-      {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
-      <Bar
-        data={{
-          labels: stats.map((s) => s.serviceName),
-          datasets: [
-            { label: "Completed today", data: stats.map((s) => s.completedToday), backgroundColor: "#0f172a" },
-            { label: "Currently waiting", data: stats.map((s) => s.waiting), backgroundColor: "#94a3b8" },
-          ],
-        }}
-        options={{ responsive: true, plugins: { legend: { position: "bottom" } } }}
-      />
+      <h1 className="text-2xl font-bold mb-6">Queue analytics</h1>
+      {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+      <div className="themed-surface border themed-border rounded-lg p-4">
+        <Bar
+          data={{
+            labels: stats.map((s) => s.serviceName),
+            datasets: [
+              { label: "Completed today", data: stats.map((s) => s.completedToday), backgroundColor: "#4f46e5" },
+              { label: "Currently waiting", data: stats.map((s) => s.waiting), backgroundColor: "#94a3b8" },
+            ],
+          }}
+          options={{ responsive: true, plugins: { legend: { position: "bottom" } } }}
+        />
+      </div>
     </div>
   );
 }

@@ -6,9 +6,12 @@ import { env } from "./config/env";
 import { errorHandler } from "./middleware/errorHandler";
 import { analyticsRouter } from "./routes/analytics.routes";
 import { authRouter } from "./routes/auth.routes";
+import { paymentsRouter } from "./routes/payments.routes";
 import { queueRouter } from "./routes/queue.routes";
+import { securityApplicationsRouter } from "./routes/securityApplications.routes";
 import { servicesRouter } from "./routes/services.routes";
 import { ticketsRouter } from "./routes/tickets.routes";
+import { usersRouter } from "./routes/users.routes";
 
 export const app = express();
 
@@ -31,5 +34,8 @@ app.use("/api/services", servicesRouter);
 app.use("/api/tickets", ticketsRouter);
 app.use("/api/queue", queueRouter);
 app.use("/api/analytics", analyticsRouter);
+app.use("/api/users", usersRouter);
+app.use("/api/security-applications", securityApplicationsRouter);
+app.use("/api/payments", paymentsRouter);
 
 app.use(errorHandler);

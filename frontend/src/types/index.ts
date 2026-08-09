@@ -1,5 +1,7 @@
 export type TicketStatus = "WAITING" | "CALLED" | "SERVING" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
 export type TicketChannel = "WEB" | "APP" | "KIOSK";
+export type SeatType = "STANDARD" | "FRONT_ROW";
+export type PaymentPlan = "FULL" | "INSTALLMENT";
 
 export interface Service {
   id: string;
@@ -7,6 +9,12 @@ export interface Service {
   description: string | null;
   avgServiceTimeMin: number;
   active: boolean;
+  price: number;
+  frontRowSurcharge: number;
+  frontRowStock: number;
+  frontRowSold: number;
+  frontRowReleaseAt: string;
+  frontRowWindowDays: number;
 }
 
 export interface Ticket {
@@ -15,8 +23,30 @@ export interface Ticket {
   serviceId: string;
   status: TicketStatus;
   channel: TicketChannel;
+  seatType: SeatType;
+  quantity: number;
+  unitPrice: number;
+  discountPct: number;
+  totalPrice: number;
+  paymentPlan: PaymentPlan;
+  installments: number;
+  amountPaid: number;
+  scheduledAt?: string | null;
+  rescheduleCount?: number;
   createdAt: string;
   position?: number;
+}
+
+export interface AppUser {
+  id: string;
+  firebaseUid: string;
+  email: string | null;
+  name: string | null;
+  phone: string | null;
+  isPremium: boolean;
+  freeTrialUsed: boolean;
+  locale: string;
+  createdAt: string;
 }
 
 export interface QueueStatus {
@@ -29,4 +59,15 @@ export interface QueueStatus {
 export interface StaffSession {
   token: string;
   staff: { id: string; email: string; name: string; role: "STAFF" | "ADMIN" };
+}
+
+export interface SecurityApplication {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  experience: string | null;
+  message: string | null;
+  status: "RECEIVED" | "REVIEWING" | "ACCEPTED" | "REJECTED";
+  createdAt: string;
 }

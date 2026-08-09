@@ -1,0 +1,90 @@
+{
+  "nav": {
+    "brand": "Digital Ticketing",
+    "book": "Book a ticket",
+    "applySecurity": "Apply for security",
+    "myTickets": "My tickets",
+    "staffLogin": "Staff login",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "goPremium": "Go Premium",
+    "premium": "Premium"
+  },
+  "home": {
+    "title": "Choose a service",
+    "subtitle": "Book a ticket and skip the physical line.",
+    "from": "from",
+    "empty": "No services available yet."
+  },
+  "book": {
+    "title": "Book your ticket",
+    "standard": "Standard",
+    "frontRow": "Front Row",
+    "perTicket": "/ ticket",
+    "left": "left",
+    "quantity": "Number of tickets",
+    "discountApplied": "multi-ticket discount applied for {{quantity}} tickets",
+    "appointment": "Appointment date & time (optional)",
+    "appointmentHint": "Pick a slot instead of joining the walk-in line right away.",
+    "email": "Email (optional — get your ticket by email too)",
+    "phone": "Phone (optional, for SMS alerts)",
+    "installments": "Pay in installments",
+    "installmentsCount": "Number of installments",
+    "total": "Total",
+    "submit": "Continue to payment",
+    "submitting": "Booking..."
+  },
+  "payment": {
+    "title": "Choose how to pay",
+    "freeTrial": "Start free trial (first ticket free)",
+    "freeTrialUsed": "You've already used your free trial",
+    "signInForTrial": "Sign in to claim your free trial",
+    "pay": "Pay",
+    "sandboxNotice": "Sandbox mode — no real charge will be made.",
+    "confirmSandbox": "Simulate successful payment",
+    "success": "Payment successful!",
+    "pending": "Payment pending"
+  },
+  "ticket": {
+    "yourTurn": "It's your turn!",
+    "inQueue": "You're in the queue",
+    "status": "Status",
+    "seatType": "Seat type",
+    "quantity": "Quantity",
+    "discount": "Discount",
+    "total": "Total",
+    "balanceDue": "Balance due",
+    "reschedule": "Reschedule appointment",
+    "rescheduleSave": "Save new time",
+    "document": "View / download ticket document",
+    "cancel": "Cancel ticket",
+    "cancelConfirm": "Are you sure you want to cancel this ticket?",
+    "cancelled": "This ticket has been cancelled.",
+    "yourNumber": "Your number",
+    "nowServing": "Now serving",
+    "peopleAhead": "People ahead",
+    "estWait": "Est. wait"
+  },
+  "security": {
+    "title": "Apply to be event security",
+    "subtitle": "Join our security team for upcoming events. Tell us a bit about yourself and we'll reach out.",
+    "fullName": "Full name",
+    "email": "Email",
+    "phone": "Phone",
+    "experience": "Relevant experience (optional)",
+    "message": "Anything else? (optional)",
+    "submit": "Submit application",
+    "submitting": "Submitting...",
+    "confirmationSub": "We've saved your application and will follow up by email."
+  },
+  "auth": {
+    "signInTitle": "Sign in",
+    "signUpTitle": "Create your account",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?"
+  }
+}
