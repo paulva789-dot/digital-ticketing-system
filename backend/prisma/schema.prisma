@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TicketStatus {
+  WAITING
+  CALLED
+  SERVING
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum TicketChannel {
+  WEB
+  APP
+  KIOSK
+}
+
+enum StaffRole {
+  STAFF
+  ADMIN
+}
+
+model User {
+  id          String   @id @default(uuid())
+  firebaseUid String   @unique
+  email       String?
+  name        String?
+  phone       String?
+  createdAt   DateTime @default(now())
+
+  tickets Ticket[]
+}
+
+model StaffUser {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         StaffRole @default(STAFF)
+  createdAt    DateTime  @default(now())
+}
+
+model Service {
+  id                String   @id @default(uuid())
+  name              String
+  description       String?
+  avgServiceTimeMin Int      @default(5)
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+
+  tickets Ticket[]
+}
+
+model Ticket {
+  id          String        @id @default(uuid())
+  number      Int
+  serviceId   String
+  service     Service       @relation(fields: [serviceId], references: [id])
+  userId      String?
+  user        User?         @relation(fields: [userId], references: [id])
+  status      TicketStatus  @default(WAITING)
+  channel     TicketChannel @default(WEB)
+  createdAt   DateTime      @default(now())
+  calledAt    DateTime?
+  servingAt   DateTime?
+  completedAt DateTime?
+
+  @@index([serviceId, status])
+  @@index([serviceId, createdAt])
+}
