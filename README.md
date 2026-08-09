@@ -10,7 +10,7 @@ SMS/push when configured).
 | Layer               | Technology                                    | Status in this scaffold |
 | -------------------- | --------------------------------------------- | ------------------------ |
 | Frontend            | React + TypeScript + Tailwind CSS             | ✅ implemented |
-| Mobile              | Flutter                                       | ⏳ not yet scaffolded |
+| Mobile              | Flutter                                       | ✅ implemented (customer flow) |
 | Backend             | Node.js + Express + TypeScript                | ✅ implemented |
 | Database            | PostgreSQL                                    | ✅ (via Prisma) |
 | ORM                 | Prisma                                        | ✅ implemented |
@@ -19,11 +19,11 @@ SMS/push when configured).
 | Push Notifications  | Firebase Cloud Messaging                      | 🔲 stub only |
 | Email               | Nodemailer                                    | ✅ implemented (falls back to console log without SMTP creds) |
 | SMS                 | Twilio                                        | 🔲 stub only |
-| QR Codes            | `qrcode` (generation) + `html5-qrcode` (scanning) | ✅ implemented |
+| QR Codes            | `qrcode` (backend) + `qr_flutter` (mobile) + `html5-qrcode`-ready web display | ✅ implemented |
 | API Testing         | Postman                                       | — bring your own collection |
 | Version Control     | Git & GitHub                                  | ✅ repo initialized |
 | UI/UX Design        | Figma                                         | — external |
-| Containerization    | Docker                                        | ⏳ not yet scaffolded |
+| Containerization    | Docker                                        | ✅ implemented (backend, frontend, Postgres via docker-compose) |
 | Frontend Deployment | Vercel                                        | ⏳ not yet configured |
 | Backend Deployment  | Railway or Render                             | ⏳ not yet configured |
 | Database Hosting    | Railway PostgreSQL or Supabase PostgreSQL     | ⏳ not yet configured |
@@ -44,11 +44,13 @@ SMS/push when configured).
 
 ```
 digital-ticketing-system/
-  backend/    Express + TypeScript API, Prisma schema, Socket.IO server
-  frontend/   React + TypeScript + Tailwind app (customer booking + staff dashboard)
+  backend/           Express + TypeScript API, Prisma schema, Socket.IO server, Dockerfile
+  frontend/          React + TypeScript + Tailwind app (customer booking + staff dashboard), Dockerfile
+  mobile/            Flutter app (customer booking + live ticket status), Android/iOS
+  docker-compose.yml Postgres + backend + frontend, wired together
 ```
 
-## Running locally
+## Running locally (without Docker)
 
 ### 1. Database
 
@@ -77,6 +79,39 @@ npm install
 npm run dev              # http://localhost:5173
 ```
 
+### 4. Mobile (Flutter)
+
+```bash
+cd mobile
+flutter pub get
+# Android emulator reaches host localhost at 10.0.2.2 (already the default in lib/config.dart)
+flutter run --dart-define=API_URL=http://10.0.2.2:4000 --dart-define=SOCKET_URL=http://10.0.2.2:4000
+# Physical device or iOS simulator: point API_URL/SOCKET_URL at your machine's LAN IP instead.
+```
+
+The mobile app covers the customer flow only (pick a service, book, watch live queue
+status with a QR code) — the staff dashboard and admin analytics stay web-only.
+
+## Running with Docker
+
+```bash
+docker compose up --build
+```
+
+This starts three containers:
+- `postgres` — Postgres 16, with a named volume so data survives restarts
+- `backend` — runs `prisma migrate deploy` on boot, then serves the API on `:4000`
+- `frontend` — nginx serving the built React app on `:8080`, proxying `/api` and
+  `/socket.io` through to `backend` so the browser only ever talks to one origin
+
+Open **http://localhost:8080**. To point the Flutter app at this stack instead of a
+local `npm run dev` backend, use `--dart-define=API_URL=http://<host-ip>:4000`.
+
+Override secrets via a `.env` file next to `docker-compose.yml` (`JWT_SECRET`,
+`FIREBASE_*`, `SMTP_*`, `TWILIO_*`) — see `docker-compose.yml` for the full list of
+supported variables. None are required to boot the stack; unset ones just keep the
+corresponding feature in stub mode.
+
 ## What's stubbed vs real
 
 - **Email** sends for real once `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` are set; otherwise
@@ -84,5 +119,5 @@ npm run dev              # http://localhost:5173
 - **SMS (Twilio)** and **push (FCM)** are wired through a single
   `notification.service.ts` dispatcher but only fire when their respective env vars
   are present — safe to leave unconfigured in development.
-- **Flutter mobile app**, **Docker**, and **cloud deployment configs** are listed in
-  the stack but intentionally left out of this pass — say the word and they're next.
+- **Cloud deployment configs** (Vercel / Railway / Render) are listed in the stack but
+  intentionally left out of this pass — say the word and they're next.
