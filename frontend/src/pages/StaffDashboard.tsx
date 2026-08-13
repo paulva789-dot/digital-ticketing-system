@@ -1,6 +1,8 @@
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
+import { socket } from "../socket";
 import { QueueStatus, Service, StaffSession, Ticket } from "../types";
 
 function useStaffSession(): StaffSession | null {
@@ -30,8 +32,20 @@ export function StaffDashboard() {
 
   useEffect(() => {
     if (!selectedService) return;
+    setQueueStatus(null);
     api.get<QueueStatus>(`/api/queue/${selectedService}`).then(setQueueStatus);
-  }, [selectedService, calledTicket]);
+
+    socket.connect();
+    socket.emit("queue:subscribe", selectedService);
+    const onUpdate = (payload: QueueStatus) => setQueueStatus(payload);
+    socket.on("queue:update", onUpdate);
+
+    return () => {
+      socket.emit("queue:unsubscribe", selectedService);
+      socket.off("queue:update", onUpdate);
+      socket.disconnect();
+    };
+  }, [selectedService]);
 
   async function callNext() {
     if (!session) return;
@@ -64,18 +78,25 @@ export function StaffDashboard() {
 
   return (
     <div className="max-w-xl mx-auto py-12 px-6 grid gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold">Staff dashboard — {session.staff.name}</h1>
-        {session.staff.role === "ADMIN" && (
-          <div className="flex gap-4 text-sm">
-            <Link to="/staff/analytics" className="hover:opacity-80">
-              Analytics
+        <div className="flex gap-4 text-sm">
+          {selectedService && (
+            <Link to={`/display/${selectedService}`} target="_blank" rel="noreferrer" className="hover:opacity-80">
+              Open display board
             </Link>
-            <Link to="/staff/services" className="hover:opacity-80">
-              Manage services
-            </Link>
-          </div>
-        )}
+          )}
+          {session.staff.role === "ADMIN" && (
+            <>
+              <Link to="/staff/analytics" className="hover:opacity-80">
+                Analytics
+              </Link>
+              <Link to="/staff/services" className="hover:opacity-80">
+                Manage services
+              </Link>
+            </>
+          )}
+        </div>
       </div>
 
       <label className="grid gap-1">
@@ -94,10 +115,23 @@ export function StaffDashboard() {
       </label>
 
       {queueStatus && (
-        <div className="themed-surface border themed-border rounded-lg p-4 flex justify-between text-sm">
-          <span>Waiting: {queueStatus.waitingCount}</span>
-          <span>Now serving: {queueStatus.nowServing ?? "—"}</span>
-          <span>Est. wait: {queueStatus.estimatedWaitMin}m</span>
+        <div className="themed-surface border themed-border rounded-lg p-4 grid gap-2">
+          <div className="flex items-center gap-1.5 text-xs themed-muted">
+            <motion.span
+              className="inline-block w-2 h-2 rounded-full bg-emerald-500"
+              animate={{ opacity: [1, 0.3, 1] }}
+              transition={{ duration: 1.6, repeat: Infinity }}
+            />
+            Live
+          </div>
+          <div className="flex justify-between text-sm">
+            <StatCounter label="Waiting" value={queueStatus.waitingCount} />
+            <StatCounter label="Now serving" value={queueStatus.nowServing ?? "—"} />
+            <StatCounter label="Est. wait" value={`${queueStatus.estimatedWaitMin}m`} />
+          </div>
+          {queueStatus.upNext.length > 0 && (
+            <div className="text-xs themed-muted">Up next: {queueStatus.upNext.join(", ")}</div>
+          )}
         </div>
       )}
 
@@ -128,6 +162,26 @@ export function StaffDashboard() {
       >
         Call next ticket
       </button>
+    </div>
+  );
+}
+
+function StatCounter({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="themed-muted text-xs">{label}</span>
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={value}
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 6 }}
+          transition={{ duration: 0.15 }}
+          className="font-semibold"
+        >
+          {value}
+        </motion.span>
+      </AnimatePresence>
     </div>
   );
 }

@@ -11,3 +11,4 @@ analyticsRouter.get(
   requireAdmin,
   asyncHandler(analyticsController.ticketsPerService)
 );
+analyticsRouter.get("/overview", requireStaff, requireAdmin, asyncHandler(analyticsController.overview));

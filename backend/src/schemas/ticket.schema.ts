@@ -10,6 +10,8 @@ export const createTicketSchema = z.object({
   paymentPlan: z.enum(["FULL", "INSTALLMENT"]).default("FULL"),
   installments: z.number().int().min(1).max(6).default(1),
   scheduledAt: z.coerce.date().optional(),
+  /** Cloudflare Turnstile token — required for front-row bookings once stock is low, if configured. */
+  captchaToken: z.string().optional(),
 });
 
 export const rescheduleTicketSchema = z.object({

@@ -5,8 +5,18 @@ import * as ticketService from "../services/ticket.service";
 import { getPositionInQueue } from "../services/queue.service";
 
 export async function createTicket(req: Request, res: Response) {
-  const { serviceId, channel, contactEmail, contactPhone, quantity, seatType, paymentPlan, installments, scheduledAt } =
-    req.body;
+  const {
+    serviceId,
+    channel,
+    contactEmail,
+    contactPhone,
+    quantity,
+    seatType,
+    paymentPlan,
+    installments,
+    scheduledAt,
+    captchaToken,
+  } = req.body;
   const result = await ticketService.createTicket({
     serviceId,
     channel,
@@ -17,6 +27,8 @@ export async function createTicket(req: Request, res: Response) {
     paymentPlan,
     installments,
     scheduledAt,
+    captchaToken,
+    requestIp: req.ip,
     userId: req.customer?.id,
   });
   res.status(201).json(result);

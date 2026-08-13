@@ -35,6 +35,14 @@ export const env = {
     authToken: process.env.TWILIO_AUTH_TOKEN ?? "",
     fromNumber: process.env.TWILIO_FROM_NUMBER ?? "",
   },
+  whatsapp: {
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? "",
+    accessToken: process.env.WHATSAPP_ACCESS_TOKEN ?? "",
+  },
+  captcha: {
+    /** Cloudflare Turnstile secret key — enforced only on front-row bookings while stock is low. */
+    turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY ?? "",
+  },
   payments: {
     mtnMomo: {
       apiKey: process.env.MTN_MOMO_API_KEY ?? "",
@@ -72,3 +80,4 @@ export const isSmtpConfigured = Boolean(env.smtp.host && env.smtp.user && env.sm
 export const isTwilioConfigured = Boolean(
   env.twilio.accountSid && env.twilio.authToken && env.twilio.fromNumber
 );
+export const isWhatsAppConfigured = Boolean(env.whatsapp.phoneNumberId && env.whatsapp.accessToken);

@@ -1,9 +1,11 @@
 import { PaymentPlan, SeatType, TicketChannel, TicketStatus } from "@prisma/client";
+import { isCaptchaConfigured, verifyCaptcha } from "./captcha.service";
 import { prisma } from "../config/prisma";
 import { HttpError } from "../middleware/errorHandler";
 import { emitQueueUpdate, emitTicketCalled } from "../sockets";
 import { generateTicketQrCode } from "../utils/qrcode";
-import { notifyTicketAlmostUp, notifyTicketCreated } from "./notification.service";
+import { notifyTicketAlmostUp, notifyTicketCreated, sendTextMessage } from "./notification.service";
+import { sendEmail } from "./email.service";
 import { getQueueStatus } from "./queue.service";
 
 interface CreateTicketInput {
@@ -17,6 +19,14 @@ interface CreateTicketInput {
   paymentPlan: PaymentPlan;
   installments: number;
   scheduledAt?: Date;
+  captchaToken?: string;
+  requestIp?: string;
+}
+
+/** Front-row drops are exactly what scalper bots target — gate the last 20% (min 3 seats) behind a captcha. */
+export function isFrontRowLowStock(frontRowStock: number, frontRowSold: number): boolean {
+  const remaining = frontRowStock - frontRowSold;
+  return remaining <= Math.max(3, Math.ceil(frontRowStock * 0.2));
 }
 
 /** 10% off orders of 2+ tickets, 20% off orders of 5+ — encourages group bookings. */
@@ -70,6 +80,13 @@ export async function createTicket(input: CreateTicketInput) {
 
   if (input.seatType === "FRONT_ROW") {
     assertFrontRowRules(service, input.quantity, isPremium);
+
+    if (isCaptchaConfigured && isFrontRowLowStock(service.frontRowStock, service.frontRowSold)) {
+      const verified = await verifyCaptcha(input.captchaToken, input.requestIp);
+      if (!verified) {
+        throw new HttpError(403, "Please complete the verification challenge and try again.");
+      }
+    }
   }
 
   if (input.userId && (input.contactEmail || input.contactPhone)) {
@@ -205,11 +222,9 @@ export async function cancelTicket(ticketId: string, requesterId?: string) {
     refundedAmount > 0
       ? `Your ticket #${ticket.number} has been cancelled and your payment of $${refundedAmount.toFixed(2)} has been refunded.`
       : `Your ticket #${ticket.number} has been cancelled.`;
-  const { sendEmail } = await import("./email.service");
-  const { sendSms } = await import("./sms.service");
   await Promise.allSettled([
     ticket.user?.email ? sendEmail(ticket.user.email, "Ticket cancelled", message) : Promise.resolve(),
-    ticket.user?.phone ? sendSms(ticket.user.phone, message) : Promise.resolve(),
+    ticket.user?.phone ? sendTextMessage(ticket.user.phone, message) : Promise.resolve(),
   ]);
 
   emitQueueUpdate(updated.serviceId, await getQueueStatus(updated.serviceId));
@@ -242,11 +257,9 @@ export async function rescheduleTicket(ticketId: string, scheduledAt: Date, requ
   });
 
   const message = `Your appointment for ${ticket.service.name} (ticket #${ticket.number}) has been rescheduled to ${scheduledAt.toLocaleString()}.`;
-  const { sendEmail } = await import("./email.service");
-  const { sendSms } = await import("./sms.service");
   await Promise.allSettled([
     ticket.user?.email ? sendEmail(ticket.user.email, "Appointment rescheduled", message) : Promise.resolve(),
-    ticket.user?.phone ? sendSms(ticket.user.phone, message) : Promise.resolve(),
+    ticket.user?.phone ? sendTextMessage(ticket.user.phone, message) : Promise.resolve(),
   ]);
 
   return updated;

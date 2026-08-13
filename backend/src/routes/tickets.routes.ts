@@ -1,6 +1,7 @@
 import { Router } from "express";
 import * as ticketsController from "../controllers/tickets.controller";
 import { optionalCustomer } from "../middleware/auth";
+import { ticketCreationLimiter } from "../middleware/rateLimiters";
 import { requireStaff } from "../middleware/staffAuth";
 import { validateBody } from "../middleware/validate";
 import {
@@ -15,6 +16,7 @@ export const ticketsRouter = Router();
 
 ticketsRouter.post(
   "/",
+  ticketCreationLimiter,
   optionalCustomer,
   validateBody(createTicketSchema),
   asyncHandler(ticketsController.createTicket)

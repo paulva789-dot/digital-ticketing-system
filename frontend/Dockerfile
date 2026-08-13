@@ -8,8 +8,10 @@ COPY . .
 # /socket.io through to the backend container so this works without hardcoding a host.
 ARG VITE_API_URL=""
 ARG VITE_SOCKET_URL="/"
+ARG VITE_TURNSTILE_SITE_KEY=""
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_SOCKET_URL=$VITE_SOCKET_URL
+ENV VITE_TURNSTILE_SITE_KEY=$VITE_TURNSTILE_SITE_KEY
 RUN npm run build
 
 FROM nginx:1.27-alpine AS runtime

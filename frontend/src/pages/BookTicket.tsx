@@ -4,7 +4,14 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { usePremium } from "../premium";
+import { isTurnstileConfigured, TurnstileWidget } from "../components/TurnstileWidget";
 import { Service, Ticket } from "../types";
+
+/** Mirrors backend's isFrontRowLowStock (ticket.service.ts) — purely for UI, server re-checks regardless. */
+function isFrontRowLowStock(frontRowStock: number, frontRowSold: number): boolean {
+  const remaining = frontRowStock - frontRowSold;
+  return remaining <= Math.max(3, Math.ceil(frontRowStock * 0.2));
+}
 
 function discountPctForQuantity(quantity: number): number {
   if (quantity >= 5) return 20;
@@ -27,6 +34,7 @@ export function BookTicket() {
   const [installments, setInstallments] = useState(2);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -54,6 +62,12 @@ export function BookTicket() {
     return null;
   }, [service, seatType, frontRowRemaining, isPremium, withinFreeWindow, quantity]);
 
+  const needsCaptcha =
+    seatType === "FRONT_ROW" &&
+    isTurnstileConfigured &&
+    Boolean(service) &&
+    isFrontRowLowStock(service!.frontRowStock, service!.frontRowSold);
+
   const discountPct = discountPctForQuantity(quantity);
   const unitPrice = service ? service.price + (seatType === "FRONT_ROW" ? service.frontRowSurcharge : 0) : 0;
   const totalPrice = Math.round(unitPrice * quantity * (1 - discountPct / 100) * 100) / 100;
@@ -74,6 +88,7 @@ export function BookTicket() {
         paymentPlan: payInInstallments ? "INSTALLMENT" : "FULL",
         installments: payInInstallments ? installments : 1,
         scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+        captchaToken: captchaToken ?? undefined,
       });
       navigate(`/ticket/${ticket.id}`, { state: { qrCode } });
     } catch (err) {
@@ -140,6 +155,13 @@ export function BookTicket() {
             </motion.p>
           )}
         </AnimatePresence>
+
+        {needsCaptcha && (
+          <div className="grid gap-1">
+            <span className="text-xs themed-muted">High demand — please verify you're not a bot to continue.</span>
+            <TurnstileWidget onVerify={setCaptchaToken} />
+          </div>
+        )}
 
         <label className="grid gap-1">
           <span className="text-sm themed-muted">{t("book.quantity")}</span>
@@ -239,7 +261,7 @@ export function BookTicket() {
           type="submit"
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
-          disabled={submitting || Boolean(frontRowBlockedReason)}
+          disabled={submitting || Boolean(frontRowBlockedReason) || (needsCaptcha && !captchaToken)}
           className="themed-accent rounded-md py-2 font-medium disabled:opacity-50"
         >
           {submitting ? t("book.submitting") : t("book.submit")}

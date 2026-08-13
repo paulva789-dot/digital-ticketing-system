@@ -51,14 +51,23 @@ export interface AppUser {
 
 export interface QueueStatus {
   serviceId: string;
+  serviceName: string;
   waitingCount: number;
   nowServing: number | null;
+  upNext: number[];
   estimatedWaitMin: number;
 }
 
 export interface StaffSession {
   token: string;
   staff: { id: string; email: string; name: string; role: "STAFF" | "ADMIN" };
+}
+
+export interface AnalyticsOverview {
+  revenueByDay: { date: string; amount: number }[];
+  ticketsByDay: { date: string; count: number }[];
+  noShowRateByService: { serviceId: string; serviceName: string; totalCalled: number; noShowRatePct: number }[];
+  avgWaitMinutesByService: { serviceId: string; serviceName: string; avgWaitMin: number }[];
 }
 
 export interface SecurityApplication {

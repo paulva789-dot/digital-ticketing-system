@@ -6,6 +6,7 @@ import { AdminAnalytics } from "./pages/AdminAnalytics";
 import { ApplySecurity } from "./pages/ApplySecurity";
 import { Auth } from "./pages/Auth";
 import { BookTicket } from "./pages/BookTicket";
+import { Display } from "./pages/Display";
 import { Home } from "./pages/Home";
 import { ManageServices } from "./pages/ManageServices";
 import { MyTickets } from "./pages/MyTickets";
@@ -16,10 +17,11 @@ import { TicketStatus } from "./pages/TicketStatus";
 
 export default function App() {
   const location = useLocation();
+  const isDisplayBoard = location.pathname.startsWith("/display");
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
-      <Navbar />
+      {!isDisplayBoard && <Navbar />}
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<PageTransition><Home /></PageTransition>} />
@@ -33,6 +35,8 @@ export default function App() {
           <Route path="/staff/dashboard" element={<PageTransition><StaffDashboard /></PageTransition>} />
           <Route path="/staff/analytics" element={<PageTransition><AdminAnalytics /></PageTransition>} />
           <Route path="/staff/services" element={<PageTransition><ManageServices /></PageTransition>} />
+          <Route path="/display" element={<Display />} />
+          <Route path="/display/:serviceId" element={<Display />} />
           <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
         </Routes>
       </AnimatePresence>

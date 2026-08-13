@@ -1,5 +1,20 @@
+import { isWhatsAppConfigured } from "../config/env";
 import { sendEmail } from "./email.service";
 import { sendSms } from "./sms.service";
+import { sendWhatsApp } from "./whatsapp.service";
+
+/**
+ * Sends a phone notification over whichever channel is configured, preferring WhatsApp
+ * when available (richer, and the standard channel in this app's mobile-money markets)
+ * and falling back to SMS — so a phone number never gets both for the same event.
+ */
+export async function sendTextMessage(phone: string, message: string): Promise<void> {
+  if (isWhatsAppConfigured) {
+    await sendWhatsApp(phone, message);
+    return;
+  }
+  await sendSms(phone, message);
+}
 
 interface TicketNotifyInput {
   email?: string | null;
@@ -29,7 +44,7 @@ export async function notifyTicketCreated(input: TicketNotifyInput): Promise<voi
   const message = `Your ticket #${input.ticketNumber} for ${input.serviceName} (${qty}x ${seatLabel}) has been booked.${priceLine} We'll notify you when it's almost your turn. Your ticket document is available on the website/app.`;
   await Promise.allSettled([
     input.email ? sendEmail(input.email, "Ticket confirmed", message) : Promise.resolve(),
-    input.phone ? sendSms(input.phone, message) : Promise.resolve(),
+    input.phone ? sendTextMessage(input.phone, message) : Promise.resolve(),
   ]);
 }
 
@@ -37,7 +52,7 @@ export async function notifyTicketAlmostUp(input: TicketNotifyInput): Promise<vo
   const message = `Heads up — ticket #${input.ticketNumber} for ${input.serviceName} is almost up. Please head to the counter.`;
   await Promise.allSettled([
     input.email ? sendEmail(input.email, "You're almost up", message) : Promise.resolve(),
-    input.phone ? sendSms(input.phone, message) : Promise.resolve(),
+    input.phone ? sendTextMessage(input.phone, message) : Promise.resolve(),
   ]);
 }
 
