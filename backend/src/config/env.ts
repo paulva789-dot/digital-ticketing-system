@@ -41,18 +41,26 @@ export const env = {
       apiUser: process.env.MTN_MOMO_API_USER ?? "",
       subscriptionKey: process.env.MTN_MOMO_SUBSCRIPTION_KEY ?? "",
       env: process.env.MTN_MOMO_ENV ?? "sandbox",
+      /** Shared secret MTN sends back in an `X-Webhook-Secret` header on their payment callback. */
+      webhookSecret: process.env.MTN_MOMO_WEBHOOK_SECRET ?? "",
     },
     orangeMoney: {
       apiKey: process.env.ORANGE_MONEY_API_KEY ?? "",
       merchantKey: process.env.ORANGE_MONEY_MERCHANT_KEY ?? "",
+      /** Shared secret Orange sends back in an `X-Webhook-Secret` header on their payment callback. */
+      webhookSecret: process.env.ORANGE_MONEY_WEBHOOK_SECRET ?? "",
     },
     stripe: {
       secretKey: process.env.STRIPE_SECRET_KEY ?? "",
       publishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? "",
+      /** Signing secret from the Stripe dashboard's webhook endpoint config (whsec_...). */
+      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
     },
     flutterwave: {
       secretKey: process.env.FLUTTERWAVE_SECRET_KEY ?? "",
       publicKey: process.env.FLUTTERWAVE_PUBLIC_KEY ?? "",
+      /** The "secret hash" set in the Flutterwave dashboard, echoed back in the `verif-hash` header. */
+      webhookSecretHash: process.env.FLUTTERWAVE_SECRET_HASH ?? "",
     },
   },
 };

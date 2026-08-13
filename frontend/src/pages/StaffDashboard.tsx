@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { QueueStatus, Service, StaffSession, Ticket } from "../types";
 
@@ -54,11 +54,29 @@ export function StaffDashboard() {
     setCalledTicket(null);
   }
 
+  async function markNoShow() {
+    if (!session || !calledTicket) return;
+    await api.post(`/api/tickets/${calledTicket.id}/status`, { status: "NO_SHOW" }, session.token);
+    setCalledTicket(null);
+  }
+
   if (!session) return null;
 
   return (
     <div className="max-w-xl mx-auto py-12 px-6 grid gap-6">
-      <h1 className="text-2xl font-bold">Staff dashboard — {session.staff.name}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Staff dashboard — {session.staff.name}</h1>
+        {session.staff.role === "ADMIN" && (
+          <div className="flex gap-4 text-sm">
+            <Link to="/staff/analytics" className="hover:opacity-80">
+              Analytics
+            </Link>
+            <Link to="/staff/services" className="hover:opacity-80">
+              Manage services
+            </Link>
+          </div>
+        )}
+      </div>
 
       <label className="grid gap-1">
         <span className="text-sm themed-muted">Service</span>
@@ -84,11 +102,19 @@ export function StaffDashboard() {
       )}
 
       {calledTicket && (
-        <div className="border border-amber-500/40 rounded-lg p-4 flex items-center justify-between">
+        <div className="border border-amber-500/40 rounded-lg p-4 flex items-center justify-between gap-3">
           <span className="font-medium">Now calling ticket #{calledTicket.number}</span>
-          <button onClick={completeCurrent} className="themed-accent text-sm rounded-md px-3 py-1.5">
-            Mark complete
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={markNoShow}
+              className="text-sm rounded-md px-3 py-1.5 border themed-border text-red-500"
+            >
+              No show
+            </button>
+            <button onClick={completeCurrent} className="themed-accent text-sm rounded-md px-3 py-1.5">
+              Mark complete
+            </button>
+          </div>
         </div>
       )}
 
@@ -96,8 +122,9 @@ export function StaffDashboard() {
 
       <button
         onClick={callNext}
-        disabled={!selectedService}
+        disabled={!selectedService || Boolean(calledTicket)}
         className="themed-accent rounded-md py-2 font-medium disabled:opacity-50"
+        title={calledTicket ? "Resolve the current ticket (complete or no-show) before calling the next one" : undefined}
       >
         Call next ticket
       </button>

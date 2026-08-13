@@ -94,7 +94,11 @@ export function TicketStatus() {
     setRescheduling(true);
     setError(null);
     try {
-      await api.post(`/api/tickets/${id}/reschedule`, { scheduledAt: new Date(rescheduleAt).toISOString() });
+      await api.post(
+        `/api/tickets/${id}/reschedule`,
+        { scheduledAt: new Date(rescheduleAt).toISOString() },
+        token
+      );
       setRescheduleAt("");
       refreshTicket();
     } catch (err) {
@@ -109,7 +113,7 @@ export function TicketStatus() {
     setCancelling(true);
     setError(null);
     try {
-      await api.post(`/api/tickets/${id}/cancel`);
+      await api.post(`/api/tickets/${id}/cancel`, undefined, token);
       refreshTicket();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Cancellation failed");

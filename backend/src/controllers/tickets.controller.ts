@@ -39,12 +39,12 @@ export async function updateStatus(req: Request, res: Response) {
 }
 
 export async function cancel(req: Request, res: Response) {
-  const ticket = await ticketService.cancelTicket(req.params.id);
+  const ticket = await ticketService.cancelTicket(req.params.id, req.customer?.id);
   res.json(ticket);
 }
 
 export async function reschedule(req: Request, res: Response) {
-  const ticket = await ticketService.rescheduleTicket(req.params.id, req.body.scheduledAt);
+  const ticket = await ticketService.rescheduleTicket(req.params.id, req.body.scheduledAt, req.customer?.id);
   res.json(ticket);
 }
 

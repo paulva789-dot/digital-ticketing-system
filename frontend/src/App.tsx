@@ -7,6 +7,7 @@ import { ApplySecurity } from "./pages/ApplySecurity";
 import { Auth } from "./pages/Auth";
 import { BookTicket } from "./pages/BookTicket";
 import { Home } from "./pages/Home";
+import { ManageServices } from "./pages/ManageServices";
 import { MyTickets } from "./pages/MyTickets";
 import { NotFound } from "./pages/NotFound";
 import { StaffDashboard } from "./pages/StaffDashboard";
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/staff/login" element={<PageTransition><StaffLogin /></PageTransition>} />
           <Route path="/staff/dashboard" element={<PageTransition><StaffDashboard /></PageTransition>} />
           <Route path="/staff/analytics" element={<PageTransition><AdminAnalytics /></PageTransition>} />
+          <Route path="/staff/services" element={<PageTransition><ManageServices /></PageTransition>} />
           <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
         </Routes>
       </AnimatePresence>

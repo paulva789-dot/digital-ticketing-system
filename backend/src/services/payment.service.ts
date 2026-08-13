@@ -78,8 +78,43 @@ export async function confirmSandboxPayment(paymentId: string) {
   if (!payment) throw new HttpError(404, "Payment not found");
   if (payment.status !== "PENDING") throw new HttpError(400, "Payment is not pending");
 
+  if (payment.provider !== "FREE_TRIAL" && SANDBOX_CONFIG[payment.provider].configured) {
+    throw new HttpError(
+      400,
+      `${SANDBOX_CONFIG[payment.provider].label} is live — this payment is confirmed via its webhook, not the sandbox endpoint`
+    );
+  }
+
   const [updated] = await prisma.$transaction([
     prisma.payment.update({ where: { id: paymentId }, data: { status: "SUCCESS", confirmedAt: new Date() } }),
+    prisma.ticket.update({ where: { id: payment.ticketId }, data: { amountPaid: { increment: payment.amount } } }),
+  ]);
+
+  return updated;
+}
+
+interface WebhookEvent {
+  /** Our own internal Payment.reference, passed to the provider at checkout time as the order/metadata id. */
+  reference: string;
+  status: "SUCCESS" | "FAILED";
+}
+
+/**
+ * Applies a verified provider webhook event to the matching PENDING payment.
+ * Idempotent: replaying the same event for an already-resolved payment is a no-op
+ * that just returns its current state, since providers commonly retry webhooks.
+ */
+export async function handleProviderWebhook(provider: PaymentProvider, event: WebhookEvent) {
+  const payment = await prisma.payment.findUnique({ where: { reference: event.reference } });
+  if (!payment || payment.provider !== provider) throw new HttpError(404, "Payment not found");
+  if (payment.status !== "PENDING") return payment;
+
+  if (event.status === "FAILED") {
+    return prisma.payment.update({ where: { id: payment.id }, data: { status: "FAILED" } });
+  }
+
+  const [updated] = await prisma.$transaction([
+    prisma.payment.update({ where: { id: payment.id }, data: { status: "SUCCESS", confirmedAt: new Date() } }),
     prisma.ticket.update({ where: { id: payment.ticketId }, data: { amountPaid: { increment: payment.amount } } }),
   ]);
 

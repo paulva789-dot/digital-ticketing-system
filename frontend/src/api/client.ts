@@ -1,7 +1,7 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
 interface RequestOptions {
-  method?: "GET" | "POST" | "DELETE";
+  method?: "GET" | "POST" | "PATCH" | "DELETE";
   body?: unknown;
   token?: string | null;
 }
@@ -28,5 +28,7 @@ async function request<T>(path: string, { method = "GET", body, token }: Request
 export const api = {
   get: <T>(path: string, token?: string | null) => request<T>(path, { token }),
   post: <T>(path: string, body?: unknown, token?: string | null) => request<T>(path, { method: "POST", body, token }),
+  patch: <T>(path: string, body?: unknown, token?: string | null) =>
+    request<T>(path, { method: "PATCH", body, token }),
   del: (path: string, token?: string | null) => request<void>(path, { method: "DELETE", token }),
 };

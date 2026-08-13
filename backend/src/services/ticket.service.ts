@@ -157,13 +157,28 @@ export async function getTicket(ticketId: string) {
 
 const CANCELLABLE_STATUSES: TicketStatus[] = ["WAITING", "CALLED"];
 
-/** Customer-initiated cancellation. Releases any front-row seats it held back to stock. */
-export async function cancelTicket(ticketId: string) {
-  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+/**
+ * Customer-initiated cancellation. Releases any front-row seats it held back to
+ * stock and refunds any money collected so far (marks SUCCESS payments REFUNDED
+ * and zeroes the ticket's amountPaid — this scaffold has no real payout step, so
+ * "refund" here means "stop counting it as collected"; wire actual provider
+ * refund API calls in here once real credentials are configured).
+ *
+ * A guest (no userId) ticket can be cancelled by anyone holding its id, same as
+ * `getTicket` — the id itself is the guest's credential. A ticket owned by a
+ * signed-in user can only be cancelled by that same user.
+ */
+export async function cancelTicket(ticketId: string, requesterId?: string) {
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId }, include: { user: true } });
   if (!ticket) throw new HttpError(404, "Ticket not found");
+  if (ticket.userId && ticket.userId !== requesterId) {
+    throw new HttpError(403, "You can only cancel your own tickets");
+  }
   if (!CANCELLABLE_STATUSES.includes(ticket.status)) {
     throw new HttpError(400, `Cannot cancel a ticket that is already ${ticket.status.toLowerCase()}`);
   }
+
+  const refundedAmount = ticket.amountPaid;
 
   const updated = await prisma.$transaction(async (tx) => {
     if (ticket.seatType === "FRONT_ROW") {
@@ -172,8 +187,30 @@ export async function cancelTicket(ticketId: string) {
         data: { frontRowSold: { decrement: ticket.quantity } },
       });
     }
-    return tx.ticket.update({ where: { id: ticketId }, data: { status: "CANCELLED" } });
+
+    if (refundedAmount > 0) {
+      await tx.payment.updateMany({
+        where: { ticketId, status: "SUCCESS" },
+        data: { status: "REFUNDED" },
+      });
+    }
+
+    return tx.ticket.update({
+      where: { id: ticketId },
+      data: { status: "CANCELLED", amountPaid: 0 },
+    });
   });
+
+  const message =
+    refundedAmount > 0
+      ? `Your ticket #${ticket.number} has been cancelled and your payment of $${refundedAmount.toFixed(2)} has been refunded.`
+      : `Your ticket #${ticket.number} has been cancelled.`;
+  const { sendEmail } = await import("./email.service");
+  const { sendSms } = await import("./sms.service");
+  await Promise.allSettled([
+    ticket.user?.email ? sendEmail(ticket.user.email, "Ticket cancelled", message) : Promise.resolve(),
+    ticket.user?.phone ? sendSms(ticket.user.phone, message) : Promise.resolve(),
+  ]);
 
   emitQueueUpdate(updated.serviceId, await getQueueStatus(updated.serviceId));
   return updated;
@@ -181,10 +218,17 @@ export async function cancelTicket(ticketId: string) {
 
 const RESCHEDULABLE_STATUSES: TicketStatus[] = ["WAITING"];
 
-/** Moves an appointment's scheduled time. Only allowed while the ticket is still WAITING. */
-export async function rescheduleTicket(ticketId: string, scheduledAt: Date) {
+/**
+ * Moves an appointment's scheduled time. Only allowed while the ticket is still WAITING.
+ * Same ownership rule as `cancelTicket`: guest tickets are movable by anyone holding the
+ * id, tickets owned by a signed-in user only by that user.
+ */
+export async function rescheduleTicket(ticketId: string, scheduledAt: Date, requesterId?: string) {
   const ticket = await prisma.ticket.findUnique({ where: { id: ticketId }, include: { service: true, user: true } });
   if (!ticket) throw new HttpError(404, "Ticket not found");
+  if (ticket.userId && ticket.userId !== requesterId) {
+    throw new HttpError(403, "You can only reschedule your own tickets");
+  }
   if (!RESCHEDULABLE_STATUSES.includes(ticket.status)) {
     throw new HttpError(400, `Cannot reschedule a ticket that is already ${ticket.status.toLowerCase()}`);
   }

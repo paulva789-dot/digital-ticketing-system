@@ -21,6 +21,11 @@ export const initiatePaymentSchema = z.object({
   provider: z.enum(["MTN_MOMO", "ORANGE_MONEY", "STRIPE", "FLUTTERWAVE", "FREE_TRIAL"]),
 });
 
+export const paymentWebhookSchema = z.object({
+  reference: z.string(),
+  status: z.enum(["SUCCESS", "FAILED"]),
+});
+
 export const updateLocaleSchema = z.object({
   locale: z.enum(["en", "fr"]),
 });
@@ -34,6 +39,22 @@ export const createServiceSchema = z.object({
   frontRowStock: z.number().int().min(0).default(0),
   frontRowReleaseAt: z.coerce.date().optional(),
   frontRowWindowDays: z.number().int().min(1).max(30).default(3),
+});
+
+export const updateServiceSchema = z.object({
+  name: z.string().min(2).optional(),
+  description: z.string().optional(),
+  avgServiceTimeMin: z.number().int().positive().optional(),
+  price: z.number().min(0).optional(),
+  frontRowSurcharge: z.number().min(0).optional(),
+  frontRowStock: z.number().int().min(0).optional(),
+  frontRowReleaseAt: z.coerce.date().optional(),
+  frontRowWindowDays: z.number().int().min(1).max(30).optional(),
+  active: z.boolean().optional(),
+});
+
+export const updateTicketStatusSchema = z.object({
+  status: z.enum(["WAITING", "CALLED", "SERVING", "COMPLETED", "CANCELLED", "NO_SHOW"]),
 });
 
 export const payInstallmentSchema = z.object({

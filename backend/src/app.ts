@@ -13,11 +13,27 @@ import { servicesRouter } from "./routes/services.routes";
 import { ticketsRouter } from "./routes/tickets.routes";
 import { usersRouter } from "./routes/users.routes";
 
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    interface Request {
+      /** Raw request bytes, captured for webhook signature verification (see payments webhook route). */
+      rawBody?: Buffer;
+    }
+  }
+}
+
 export const app = express();
 
 app.use(helmet());
 app.use(cors({ origin: env.corsOrigin }));
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      (req as express.Request).rawBody = buf;
+    },
+  })
+);
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
